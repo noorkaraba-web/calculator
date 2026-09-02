@@ -587,6 +587,16 @@
       <div class="calc-line"><span>Karaba dc</span><b id="line-half">₩0</b></div>
       <div class="calc-line"><span>Vehicle offer price</span><b id="line-offer">₩0</b></div>
 
+      <div style="margin-top:10px;">
+        <button onclick="toggleIncentives()" id="incentivesToggle" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;">
+          <span id="incentivesArrow" style="display:inline-block;transition:transform .2s;font-size:10px;">▶</span>
+          Incentives <span style="font-size:10px;color:var(--muted);margin-left:2px;">(internal only)</span>
+        </button>
+        <div id="incentivesSection" style="display:none;margin-top:8px;">
+          <input id="incentivesPct" class="num-input" type="number" placeholder="e.g. 20 (%)" oninput="render()">
+        </div>
+      </div>
+
       <h2 id="h-fees" style="margin-top:22px;">Fees on top (KRW)</h2>
       <div class="row2">
         <div>
@@ -745,6 +755,15 @@ function toggleVIN(){
   if(!open) { document.getElementById('vinNumber').value=''; render(); }
 }
 
+function toggleIncentives(){
+  const sec = document.getElementById('incentivesSection');
+  const arrow = document.getElementById('incentivesArrow');
+  const open = sec.style.display === 'none';
+  sec.style.display = open ? '' : 'none';
+  arrow.style.transform = open ? 'rotate(90deg)' : '';
+  if(!open) { document.getElementById('incentivesPct').value=''; render(); }
+}
+
 let buyerLang = 'en';
 
 function setView(v){
@@ -800,6 +819,12 @@ function compute(){
   const half = vatAmount * (sharePct / 100);   // Karaba dc = VAT × chosen %
   const offerPrice = vatBase - half; // vehicle offer price
 
+  const vatAfterKarabaDC = vatAmount - half; // Total VAT remaining after Karaba DC is deducted
+  const incentivesEl = document.getElementById('incentivesPct');
+  const incentivesRaw = incentivesEl ? incentivesEl.value : '';
+  const incentivesPct = incentivesRaw === '' ? null : (Number(incentivesRaw) || 0);
+  const incentivesAmount = incentivesPct !== null ? vatAfterKarabaDC * (incentivesPct / 100) : null;
+
   const feeRaw = document.getElementById('fee').value;
   const fee = feeRaw === '' ? null : (Number(feeRaw) || 0);
   const carrierRaw = document.getElementById('carrier').value;
@@ -832,7 +857,7 @@ function compute(){
   const fob = rate > 0 ? totalKRW / rate : 0;
 
   const vin = (document.getElementById('vinNumber') ? document.getElementById('vinNumber').value.trim() : '');
-  return {carPrice, dealerDc, auctionFees, discounted, vatBase, vatType, vatAmount, sharePct, half, offerPrice, fee, carrier, shipping, isCIF, handling, handlingLabel, parts, customFee, customFeeLabel, shoring, totalKRW, rate, fob, vin};
+  return {carPrice, dealerDc, auctionFees, discounted, vatBase, vatType, vatAmount, sharePct, half, vatAfterKarabaDC, incentivesPct, incentivesAmount, offerPrice, fee, carrier, shipping, isCIF, handling, handlingLabel, parts, customFee, customFeeLabel, shoring, totalKRW, rate, fob, vin};
 }
 
 function render(){
@@ -896,6 +921,10 @@ function render(){
       irows += intSec(vatSecLabel);
       irows += intMuted('VAT Amount', c.vatAmount, conv(c.vatAmount), currency);
       irows += intRow('Karaba DC, '+c.sharePct+'%', c.half, conv(c.half), currency);
+      if(c.incentivesPct !== null){
+        irows += intMuted('Total VAT', c.vatAfterKarabaDC, conv(c.vatAfterKarabaDC), currency);
+        irows += intRow('Incentives '+c.incentivesPct+'%', c.incentivesAmount, conv(c.incentivesAmount), currency);
+      }
       irows += intSub('Car DC price', c.offerPrice, conv(c.offerPrice), currency);
     }
 
