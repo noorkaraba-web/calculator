@@ -229,63 +229,6 @@
     --card-pad-x:32px;
     --card-pad-y:32px;
   }
-  /* ── Photo sidebar (buyer view only, shown when a car photo is uploaded) ── */
-  .quote.q-has-split{padding:0 !important;}
-  .q-split{display:flex;align-items:stretch;min-height:480px;}
-  .q-photo-side{
-    flex:0 0 34%;
-    min-width:150px;
-    position:relative;
-    overflow:hidden;
-    display:flex;
-    flex-direction:column;
-    justify-content:space-between;
-    padding:20px 18px;
-    background-color:#e5e5e5;
-  }
-  /* Soft blurred backdrop (same photo, scaled+blurred) fills the box so the
-     full photo can be shown via object-fit:contain without ugly empty bars. */
-  .q-photo-bg{
-    position:absolute;
-    inset:-12px;
-    background-size:cover;
-    background-position:center;
-    filter:blur(18px) brightness(0.85) saturate(1.1);
-    transform:scale(1.15);
-  }
-  .q-photo-img{
-    position:absolute;
-    inset:0;
-    width:100%;
-    height:100%;
-    object-fit:contain;
-    z-index:1;
-  }
-  .q-photo-side::before{
-    content:'';
-    position:absolute;
-    inset:0;
-    z-index:2;
-    background:linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.02) 30%, rgba(0,0,0,0.02) 55%, rgba(0,0,0,0.62) 100%);
-  }
-  .q-photo-side > .q-badge,
-  .q-photo-side > .q-photo-name{position:relative;z-index:3;}
-  .q-photo-side .q-badge{align-self:flex-start;}
-  .q-photo-name{
-    color:#fff;
-    font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
-    font-size:24px;
-    font-weight:800;
-    line-height:1.15;
-    text-shadow:0 2px 8px rgba(0,0,0,0.5);
-  }
-  .q-content{
-    flex:1;
-    min-width:0;
-    padding:28px 28px 28px 24px;
-    display:flex;
-    flex-direction:column;
-  }
   .q-head{
     display:flex;
     justify-content:space-between;
@@ -325,8 +268,6 @@
   .quote[dir="rtl"]{direction:rtl;}
   .quote[dir="rtl"] .q-head{flex-direction:row-reverse;}
   .quote[dir="rtl"] .q-head > div:first-child{flex-direction:row-reverse;}
-  .quote[dir="rtl"] .q-split{flex-direction:row;}
-  .quote[dir="rtl"] .q-photo-name{text-align:right;}
 
 
   /* New dual-currency comfortable table */
@@ -445,11 +386,6 @@
     .quote.int-formal .q-car{font-size:20px;}
     .quote.int-formal .int-subtitle{font-size:8px;letter-spacing:0.1em;}
     .quote.int-formal .q-logo{height:20px;}
-    .quote.q-has-split .q-split{flex-direction:column;min-height:0;}
-    .quote.q-has-split .q-photo-side{flex:0 0 auto;width:100%;min-height:150px;padding:14px;}
-    .quote.q-has-split .q-photo-name{font-size:20px;}
-    .quote.q-has-split .q-content{padding:16px 12px;}
-    .quote[dir="rtl"].q-has-split .q-split{flex-direction:column;}
 
     /* Metadata bar: 2×2 grid on mobile */
     .quote.int-formal .int-meta{grid-template-columns:repeat(2,1fr);gap:8px;padding:10px 0;}
@@ -598,20 +534,6 @@
         </button>
         <div id="vinSection" style="display:none;margin-top:8px;">
           <input id="vinNumber" class="num-input" placeholder="e.g. 1HGBH41JXMN109186" oninput="render()" style="font-family:monospace;letter-spacing:0.05em;">
-        </div>
-      </div>
-
-      <div style="margin-top:10px;">
-        <button onclick="togglePhoto()" id="photoToggle" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;">
-          <span id="photoArrow" style="display:inline-block;transition:transform .2s;font-size:10px;">▶</span>
-          Car Photo <span style="font-size:10px;color:var(--muted);margin-left:2px;">(optional, buyer view only)</span>
-        </button>
-        <div id="photoSection" style="display:none;margin-top:8px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="file" id="carPhotoInput" accept="image/*" onchange="handlePhotoUpload(event)" style="flex:1;min-width:0;font-size:11px;color:var(--muted);">
-            <img id="carPhotoPreview" src="" alt="" style="display:none;width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid var(--line);flex-shrink:0;">
-            <button type="button" id="carPhotoRemove" onclick="removeCarPhoto()" style="display:none;background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;flex-shrink:0;">Remove</button>
-          </div>
         </div>
       </div>
 
@@ -817,15 +739,6 @@ function toggleVIN(){
   if(!open) { document.getElementById('vinNumber').value=''; render(); }
 }
 
-function togglePhoto(){
-  const sec = document.getElementById('photoSection');
-  const arrow = document.getElementById('photoArrow');
-  const open = sec.style.display === 'none';
-  sec.style.display = open ? '' : 'none';
-  arrow.style.transform = open ? 'rotate(90deg)' : '';
-  if(!open) { removeCarPhoto(); }
-}
-
 function toggleIncentives(){
   const sec = document.getElementById('incentivesSection');
   const arrow = document.getElementById('incentivesArrow');
@@ -836,43 +749,6 @@ function toggleIncentives(){
 }
 
 let buyerLang = 'en';
-let carPhotoDataUrl = null;
-
-function handlePhotoUpload(event){
-  const file = event.target.files && event.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e){
-    const img = new Image();
-    img.onload = function(){
-      // Resize/compress so storage stays reasonable, but keep enough resolution
-      // for the full-width hero banner on the buyer quote to look sharp.
-      const maxDim = 1600;
-      let w = img.width, h = img.height;
-      if(w > h){ if(w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; } }
-      else { if(h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; } }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      carPhotoDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-      const preview = document.getElementById('carPhotoPreview');
-      preview.src = carPhotoDataUrl;
-      preview.style.display = '';
-      document.getElementById('carPhotoRemove').style.display = '';
-      render();
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-function removeCarPhoto(){
-  carPhotoDataUrl = null;
-  document.getElementById('carPhotoInput').value = '';
-  document.getElementById('carPhotoPreview').style.display = 'none';
-  document.getElementById('carPhotoRemove').style.display = 'none';
-  render();
-}
 
 
 function setView(v){
@@ -1066,13 +942,15 @@ function render(){
 
   const quoteEl = document.getElementById('quote');
   quoteEl.setAttribute('dir', dir);
-
-  // Photo only ever shows on the buyer/quote side, never internal — rendered as a
-  // full-height side panel (not a top banner), with the invoice content untouched.
-  const showPhotoSide = isBuyer && !!carPhotoDataUrl;
-
-  const tableHtml =
-    '<table class="q-table2" dir="'+dir+'">'
+  quoteEl.className = 'quote int-formal';
+  quoteEl.innerHTML =
+    '<div class="q-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:4px;">'
+    + '<div><div class="q-badge '+badgeClass+'" style="display:inline-block;">'+badgeLabel+'</div>'
+    + '<div class="q-car">'+escapeHtml(carName)+'</div></div>'
+    + '<img class="q-logo" src="'+LOGO_DATA_URI+'" alt="Karaba">'
+    + '</div>'
+    + metaHtml
+    + '<table class="q-table2" dir="'+dir+'">'
     + '<colgroup><col class="c-lbl"><col class="c-krw"><col class="c-fx"></colgroup>'
     + '<thead><tr>'
     + '<th class="col-lbl">'+(isAR ? 'البنود' : 'Line Item')+'</th>'
@@ -1081,37 +959,6 @@ function render(){
     + '</tr></thead>'
     + '<tbody>'+irows+'</tbody>'
     + '</table>';
-
-  if(showPhotoSide){
-    quoteEl.className = 'quote int-formal q-has-split';
-    const logoJustify = isAR ? 'flex-start' : 'flex-end';
-    quoteEl.innerHTML =
-      '<div class="q-split">'
-      + '<div class="q-photo-side">'
-      + '<div class="q-photo-bg" style="background-image:url(' + carPhotoDataUrl + ');"></div>'
-      + '<img class="q-photo-img" src="' + carPhotoDataUrl + '" alt="Car photo">'
-      + '<div class="q-badge '+badgeClass+'" style="display:inline-block;">'+badgeLabel+'</div>'
-      + '<div class="q-photo-name">'+escapeHtml(carName)+'</div>'
-      + '</div>'
-      + '<div class="q-content">'
-      + '<div style="display:flex;justify-content:'+logoJustify+';margin-bottom:14px;">'
-      + '<img class="q-logo" src="'+LOGO_DATA_URI+'" alt="Karaba">'
-      + '</div>'
-      + metaHtml
-      + tableHtml
-      + '</div>'
-      + '</div>';
-  } else {
-    quoteEl.className = 'quote int-formal';
-    quoteEl.innerHTML =
-      '<div class="q-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:4px;">'
-      + '<div><div class="q-badge '+badgeClass+'" style="display:inline-block;">'+badgeLabel+'</div>'
-      + '<div class="q-car">'+escapeHtml(carName)+'</div></div>'
-      + '<img class="q-logo" src="'+LOGO_DATA_URI+'" alt="Karaba">'
-      + '</div>'
-      + metaHtml
-      + tableHtml;
-  }
 }
 
 // ── Internal redesign helpers ──
@@ -1273,7 +1120,6 @@ async function saveDeal(){
     customFeeLabel: document.getElementById('customFeeLabel').value,
     currency: document.getElementById('currency').value,
     rate: document.getElementById('rate').value,
-    carPhoto: carPhotoDataUrl || '',
     savedAt: new Date().toISOString()
   };
   const id = 'deal_' + Date.now();
@@ -1335,24 +1181,6 @@ async function loadDeal(key){
     document.getElementById('customFeeLabel').value = deal.customFeeLabel || '';
     document.getElementById('currency').value = deal.currency || 'USD';
     document.getElementById('rate').value = deal.rate || '';
-    carPhotoDataUrl = deal.carPhoto || null;
-    const photoSection = document.getElementById('photoSection');
-    const photoArrow = document.getElementById('photoArrow');
-    const photoPreview = document.getElementById('carPhotoPreview');
-    const photoRemove = document.getElementById('carPhotoRemove');
-    if(carPhotoDataUrl){
-      photoPreview.src = carPhotoDataUrl;
-      photoPreview.style.display = '';
-      photoRemove.style.display = '';
-      photoSection.style.display = '';
-      photoArrow.style.transform = 'rotate(90deg)';
-    } else {
-      photoPreview.style.display = 'none';
-      photoRemove.style.display = 'none';
-      photoSection.style.display = 'none';
-      photoArrow.style.transform = '';
-    }
-    document.getElementById('carPhotoInput').value = '';
     render();
   }catch(e){
     console.error(e);
