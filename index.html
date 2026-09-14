@@ -226,6 +226,65 @@
     position:relative;
     overflow:hidden;
     min-height:480px;
+    --card-pad-x:32px;
+    --card-pad-y:32px;
+  }
+  /* ── Photo sidebar (buyer view only, shown when a car photo is uploaded) ── */
+  .quote.q-has-split{padding:0 !important;}
+  .q-split{display:flex;align-items:stretch;min-height:480px;}
+  .q-photo-side{
+    flex:0 0 34%;
+    min-width:150px;
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    padding:20px 18px;
+    background-color:#e5e5e5;
+  }
+  /* Soft blurred backdrop (same photo, scaled+blurred) fills the box so the
+     full photo can be shown via object-fit:contain without ugly empty bars. */
+  .q-photo-bg{
+    position:absolute;
+    inset:-12px;
+    background-size:cover;
+    background-position:center;
+    filter:blur(18px) brightness(0.85) saturate(1.1);
+    transform:scale(1.15);
+  }
+  .q-photo-img{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    z-index:1;
+  }
+  .q-photo-side::before{
+    content:'';
+    position:absolute;
+    inset:0;
+    z-index:2;
+    background:linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.02) 30%, rgba(0,0,0,0.02) 55%, rgba(0,0,0,0.62) 100%);
+  }
+  .q-photo-side > .q-badge,
+  .q-photo-side > .q-photo-name{position:relative;z-index:3;}
+  .q-photo-side .q-badge{align-self:flex-start;}
+  .q-photo-name{
+    color:#fff;
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+    font-size:24px;
+    font-weight:800;
+    line-height:1.15;
+    text-shadow:0 2px 8px rgba(0,0,0,0.5);
+  }
+  .q-content{
+    flex:1;
+    min-width:0;
+    padding:28px 28px 28px 24px;
+    display:flex;
+    flex-direction:column;
   }
   .q-head{
     display:flex;
@@ -265,6 +324,9 @@
   /* Arabic RTL buyer quote */
   .quote[dir="rtl"]{direction:rtl;}
   .quote[dir="rtl"] .q-head{flex-direction:row-reverse;}
+  .quote[dir="rtl"] .q-head > div:first-child{flex-direction:row-reverse;}
+  .quote[dir="rtl"] .q-split{flex-direction:row;}
+  .quote[dir="rtl"] .q-photo-name{text-align:right;}
 
 
   /* New dual-currency comfortable table */
@@ -379,10 +441,15 @@
     .q-table2 th{padding-bottom:6px;}
     .q-table2 tr.total td{font-size:clamp(10px,3.2vw,14px);padding-top:14px;}
     /* Internal quote — full mobile overrides */
-    .quote.int-formal{padding:14px 12px;}
+    .quote.int-formal{padding:14px 12px;--card-pad-x:12px;--card-pad-y:14px;}
     .quote.int-formal .q-car{font-size:20px;}
     .quote.int-formal .int-subtitle{font-size:8px;letter-spacing:0.1em;}
     .quote.int-formal .q-logo{height:20px;}
+    .quote.q-has-split .q-split{flex-direction:column;min-height:0;}
+    .quote.q-has-split .q-photo-side{flex:0 0 auto;width:100%;min-height:150px;padding:14px;}
+    .quote.q-has-split .q-photo-name{font-size:20px;}
+    .quote.q-has-split .q-content{padding:16px 12px;}
+    .quote[dir="rtl"].q-has-split .q-split{flex-direction:column;}
 
     /* Metadata bar: 2×2 grid on mobile */
     .quote.int-formal .int-meta{grid-template-columns:repeat(2,1fr);gap:8px;padding:10px 0;}
@@ -527,10 +594,24 @@
       <div style="margin-top:10px;">
         <button onclick="toggleVIN()" id="vinToggle" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;">
           <span id="vinArrow" style="display:inline-block;transition:transform .2s;font-size:10px;">▶</span>
-          VIN Number <span style="font-size:10px;color:var(--muted);margin-left:2px;">(internal only)</span>
+          VIN Number <span style="font-size:10px;color:var(--muted);margin-left:2px;">(optional)</span>
         </button>
         <div id="vinSection" style="display:none;margin-top:8px;">
           <input id="vinNumber" class="num-input" placeholder="e.g. 1HGBH41JXMN109186" oninput="render()" style="font-family:monospace;letter-spacing:0.05em;">
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <button onclick="togglePhoto()" id="photoToggle" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;">
+          <span id="photoArrow" style="display:inline-block;transition:transform .2s;font-size:10px;">▶</span>
+          Car Photo <span style="font-size:10px;color:var(--muted);margin-left:2px;">(optional, buyer view only)</span>
+        </button>
+        <div id="photoSection" style="display:none;margin-top:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="file" id="carPhotoInput" accept="image/*" onchange="handlePhotoUpload(event)" style="flex:1;min-width:0;font-size:11px;color:var(--muted);">
+            <img id="carPhotoPreview" src="" alt="" style="display:none;width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid var(--line);flex-shrink:0;">
+            <button type="button" id="carPhotoRemove" onclick="removeCarPhoto()" style="display:none;background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;flex-shrink:0;">Remove</button>
+          </div>
         </div>
       </div>
 
@@ -541,17 +622,7 @@
       <label id="l-auction">Auction fees (KRW)</label>
       <input id="auctionFees" class="num-input" type="number" placeholder="leave empty to hide" oninput="render()">
 
-      <div style="margin-top:10px;">
-        <button onclick="toggleDealerDc()" id="dealerDcToggle" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;">
-          <span id="dealerDcArrow" style="display:inline-block;transition:transform .2s;font-size:10px;">▶</span>
-          Dealer DC <span style="font-size:10px;color:var(--muted);margin-left:2px;">(optional)</span>
-        </button>
-        <div id="dealerDcSection" style="display:none;margin-top:8px;">
-          <input id="dealerDc" class="num-input" type="number" placeholder="0" oninput="render()">
-        </div>
-      </div>
-
-      <div class="calc-line"><span>Discounted price (after dealer dc)</span><b id="line-discounted">₩0</b></div>
+      <div class="calc-line"><span>Total car price</span><b id="line-totalcarprice">₩0</b></div>
 
       <h2 id="h-vat" style="margin-top:22px;">VAT / Tax Type</h2>
       <div class="vat-options">
@@ -737,15 +808,6 @@ function toggleShoring(){
   if(!open){ document.getElementById('shoring').value=''; render(); }
 }
 
-function toggleDealerDc(){
-  const sec = document.getElementById('dealerDcSection');
-  const arrow = document.getElementById('dealerDcArrow');
-  const open = sec.style.display === 'none';
-  sec.style.display = open ? '' : 'none';
-  arrow.style.transform = open ? 'rotate(90deg)' : '';
-  if(!open){ document.getElementById('dealerDc').value=''; render(); }
-}
-
 function toggleVIN(){
   const sec = document.getElementById('vinSection');
   const arrow = document.getElementById('vinArrow');
@@ -753,6 +815,15 @@ function toggleVIN(){
   sec.style.display = open ? '' : 'none';
   arrow.style.transform = open ? 'rotate(90deg)' : '';
   if(!open) { document.getElementById('vinNumber').value=''; render(); }
+}
+
+function togglePhoto(){
+  const sec = document.getElementById('photoSection');
+  const arrow = document.getElementById('photoArrow');
+  const open = sec.style.display === 'none';
+  sec.style.display = open ? '' : 'none';
+  arrow.style.transform = open ? 'rotate(90deg)' : '';
+  if(!open) { removeCarPhoto(); }
 }
 
 function toggleIncentives(){
@@ -765,6 +836,44 @@ function toggleIncentives(){
 }
 
 let buyerLang = 'en';
+let carPhotoDataUrl = null;
+
+function handlePhotoUpload(event){
+  const file = event.target.files && event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = new Image();
+    img.onload = function(){
+      // Resize/compress so storage stays reasonable, but keep enough resolution
+      // for the full-width hero banner on the buyer quote to look sharp.
+      const maxDim = 1600;
+      let w = img.width, h = img.height;
+      if(w > h){ if(w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; } }
+      else { if(h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; } }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      carPhotoDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      const preview = document.getElementById('carPhotoPreview');
+      preview.src = carPhotoDataUrl;
+      preview.style.display = '';
+      document.getElementById('carPhotoRemove').style.display = '';
+      render();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeCarPhoto(){
+  carPhotoDataUrl = null;
+  document.getElementById('carPhotoInput').value = '';
+  document.getElementById('carPhotoPreview').style.display = 'none';
+  document.getElementById('carPhotoRemove').style.display = 'none';
+  render();
+}
+
 
 function setView(v){
   view = v;
@@ -803,11 +912,10 @@ function getVatType(){
 
 function compute(){
   const carPrice = Number(document.getElementById('carPrice').value) || 0;
-  const dealerDc = Number(document.getElementById('dealerDc').value) || 0;
-  const discounted = carPrice - dealerDc; // after dealer discount
   const auctionFeesRaw = document.getElementById('auctionFees').value;
   const auctionFees = auctionFeesRaw === '' ? null : (Number(auctionFeesRaw) || 0);
-  const vatBase = discounted + (auctionFees !== null ? auctionFees : 0); // total vehicle cost for VAT
+  const totalCarPrice = carPrice + (auctionFees !== null ? auctionFees : 0); // car price + auction fees
+  const vatBase = totalCarPrice; // total vehicle cost for VAT
 
   const vatType = getVatType();
   let vatAmount = 0;
@@ -857,7 +965,7 @@ function compute(){
   const fob = rate > 0 ? totalKRW / rate : 0;
 
   const vin = (document.getElementById('vinNumber') ? document.getElementById('vinNumber').value.trim() : '');
-  return {carPrice, dealerDc, auctionFees, discounted, vatBase, vatType, vatAmount, sharePct, half, vatAfterKarabaDC, incentivesPct, incentivesAmount, offerPrice, fee, carrier, shipping, isCIF, handling, handlingLabel, parts, customFee, customFeeLabel, shoring, totalKRW, rate, fob, vin};
+  return {carPrice, auctionFees, totalCarPrice, vatBase, vatType, vatAmount, sharePct, half, vatAfterKarabaDC, incentivesPct, incentivesAmount, offerPrice, fee, carrier, shipping, isCIF, handling, handlingLabel, parts, customFee, customFeeLabel, shoring, totalKRW, rate, fob, vin};
 }
 
 function render(){
@@ -868,7 +976,7 @@ function render(){
 
   const c = compute();
 
-  document.getElementById('line-discounted').textContent = fmtKRW(c.discounted);
+  document.getElementById('line-totalcarprice').textContent = fmtKRW(c.totalCarPrice);
   document.getElementById('line-vat').textContent = fmtKRW(c.vatAmount);
   document.getElementById('line-half').textContent = fmtKRW(c.half);
   document.getElementById('line-offer').textContent = fmtKRW(c.offerPrice);
@@ -887,9 +995,9 @@ function render(){
     ? todayRaw.toLocaleDateString('ar-EG', {day:'2-digit', month:'short', year:'numeric'})
     : todayRaw.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
 
-  // ── Meta bar — same design for both views. VIN is internal-only.
+  // ── Meta bar — same design for both views, including VIN.
   //    Exchange rate only shows once a rate has actually been entered. ──
-  const showVin = !isBuyer;
+  const showVin = true;
   const showRate = c.rate > 0;
   const lbl = {
     vin:   isAR ? 'رقم الهيكل' : 'VIN',
@@ -911,8 +1019,7 @@ function render(){
     irows += intSec('Vehicle Cost');
     irows += intRow('Car price', c.carPrice, conv(c.carPrice), currency);
     if(c.auctionFees !== null && c.auctionFees > 0) irows += intRow('Auction fees', c.auctionFees, conv(c.auctionFees), currency);
-    if(c.dealerDc > 0) irows += intRow('Dealer discount', c.dealerDc, conv(c.dealerDc), currency);
-    irows += intSub('Car price', c.vatBase, conv(c.vatBase), currency);
+    irows += intSub('Total car price', c.vatBase, conv(c.vatBase), currency);
 
     if(c.sharePct > 0){
       const vatSecLabel = c.vatType === 'invoice' ? 'VAT (Tax invoice ÷11)'
@@ -959,15 +1066,13 @@ function render(){
 
   const quoteEl = document.getElementById('quote');
   quoteEl.setAttribute('dir', dir);
-  quoteEl.className = 'quote int-formal';
-  quoteEl.innerHTML =
-    '<div class="q-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:4px;">'
-    + '<div><div class="q-badge '+badgeClass+'" style="display:inline-block;">'+badgeLabel+'</div>'
-    + '<div class="q-car">'+escapeHtml(carName)+'</div></div>'
-    + '<img class="q-logo" src="'+LOGO_DATA_URI+'" alt="Karaba">'
-    + '</div>'
-    + metaHtml
-    + '<table class="q-table2" dir="'+dir+'">'
+
+  // Photo only ever shows on the buyer/quote side, never internal — rendered as a
+  // full-height side panel (not a top banner), with the invoice content untouched.
+  const showPhotoSide = isBuyer && !!carPhotoDataUrl;
+
+  const tableHtml =
+    '<table class="q-table2" dir="'+dir+'">'
     + '<colgroup><col class="c-lbl"><col class="c-krw"><col class="c-fx"></colgroup>'
     + '<thead><tr>'
     + '<th class="col-lbl">'+(isAR ? 'البنود' : 'Line Item')+'</th>'
@@ -976,6 +1081,37 @@ function render(){
     + '</tr></thead>'
     + '<tbody>'+irows+'</tbody>'
     + '</table>';
+
+  if(showPhotoSide){
+    quoteEl.className = 'quote int-formal q-has-split';
+    const logoJustify = isAR ? 'flex-start' : 'flex-end';
+    quoteEl.innerHTML =
+      '<div class="q-split">'
+      + '<div class="q-photo-side">'
+      + '<div class="q-photo-bg" style="background-image:url(' + carPhotoDataUrl + ');"></div>'
+      + '<img class="q-photo-img" src="' + carPhotoDataUrl + '" alt="Car photo">'
+      + '<div class="q-badge '+badgeClass+'" style="display:inline-block;">'+badgeLabel+'</div>'
+      + '<div class="q-photo-name">'+escapeHtml(carName)+'</div>'
+      + '</div>'
+      + '<div class="q-content">'
+      + '<div style="display:flex;justify-content:'+logoJustify+';margin-bottom:14px;">'
+      + '<img class="q-logo" src="'+LOGO_DATA_URI+'" alt="Karaba">'
+      + '</div>'
+      + metaHtml
+      + tableHtml
+      + '</div>'
+      + '</div>';
+  } else {
+    quoteEl.className = 'quote int-formal';
+    quoteEl.innerHTML =
+      '<div class="q-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:4px;">'
+      + '<div><div class="q-badge '+badgeClass+'" style="display:inline-block;">'+badgeLabel+'</div>'
+      + '<div class="q-car">'+escapeHtml(carName)+'</div></div>'
+      + '<img class="q-logo" src="'+LOGO_DATA_URI+'" alt="Karaba">'
+      + '</div>'
+      + metaHtml
+      + tableHtml;
+  }
 }
 
 // ── Internal redesign helpers ──
@@ -1125,7 +1261,6 @@ async function saveDeal(){
     carName: document.getElementById('carName').value,
     plate: document.getElementById('plate').value,
     carPrice: document.getElementById('carPrice').value,
-    dealerDc: document.getElementById('dealerDc').value,
     vatType: getVatType(),
     vatShare: document.getElementById('vatShare').value,
     fee: document.getElementById('fee').value,
@@ -1138,6 +1273,7 @@ async function saveDeal(){
     customFeeLabel: document.getElementById('customFeeLabel').value,
     currency: document.getElementById('currency').value,
     rate: document.getElementById('rate').value,
+    carPhoto: carPhotoDataUrl || '',
     savedAt: new Date().toISOString()
   };
   const id = 'deal_' + Date.now();
@@ -1187,7 +1323,6 @@ async function loadDeal(key){
     document.getElementById('carName').value = deal.carName || '';
     document.getElementById('plate').value = deal.plate || '';
     document.getElementById('carPrice').value = deal.carPrice || '';
-    document.getElementById('dealerDc').value = deal.dealerDc || '';
     document.querySelector(`input[name="vatType"][value="${deal.vatType||'invoice'}"]`).checked = true;
     document.getElementById('vatShare').value = deal.vatShare || '50';
     document.getElementById('fee').value = deal.fee || '';
@@ -1200,6 +1335,24 @@ async function loadDeal(key){
     document.getElementById('customFeeLabel').value = deal.customFeeLabel || '';
     document.getElementById('currency').value = deal.currency || 'USD';
     document.getElementById('rate').value = deal.rate || '';
+    carPhotoDataUrl = deal.carPhoto || null;
+    const photoSection = document.getElementById('photoSection');
+    const photoArrow = document.getElementById('photoArrow');
+    const photoPreview = document.getElementById('carPhotoPreview');
+    const photoRemove = document.getElementById('carPhotoRemove');
+    if(carPhotoDataUrl){
+      photoPreview.src = carPhotoDataUrl;
+      photoPreview.style.display = '';
+      photoRemove.style.display = '';
+      photoSection.style.display = '';
+      photoArrow.style.transform = 'rotate(90deg)';
+    } else {
+      photoPreview.style.display = 'none';
+      photoRemove.style.display = 'none';
+      photoSection.style.display = 'none';
+      photoArrow.style.transform = '';
+    }
+    document.getElementById('carPhotoInput').value = '';
     render();
   }catch(e){
     console.error(e);
