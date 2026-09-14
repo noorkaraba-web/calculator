@@ -980,7 +980,7 @@ function render(){
   if(showVin){ metaCols += '<div class="int-meta-col"><div class="im-lbl">'+lbl.vin+'</div><div class="im-val">'+escapeHtml(c.vin||'—')+'</div></div>'; metaColCount++; }
   metaCols += '<div class="int-meta-col"><div class="im-lbl">'+lbl.plate+'</div><div class="im-val">'+escapeHtml(plate||'—')+'</div></div>'; metaColCount++;
   metaCols += '<div class="int-meta-col"><div class="im-lbl">'+lbl.date+'</div><div class="im-val">'+today+'</div></div>'; metaColCount++;
-  if(showRate){ metaCols += '<div class="int-meta-col"><div class="im-lbl">'+lbl.rate+'</div><div class="im-val">1 '+escapeHtml(currency)+' = '+fmtKRW(c.rate)+'</div></div>'; metaColCount++; }
+  if(showRate){ metaCols += '<div class="int-meta-col"><div class="im-lbl">'+lbl.rate+'</div><div class="im-val" dir="ltr" style="'+(isAR?'text-align:right;':'')+'">1 '+escapeHtml(currency)+' = '+fmtKRW(c.rate)+'</div></div>'; metaColCount++; }
   const metaHtml = '<div class="int-meta'+(metaColCount===4?'':' int-meta-'+metaColCount)+'">' + metaCols + '</div>';
 
   // ── Line items — internal gets the full cost breakdown, buyer gets the client-safe summary ──
@@ -1166,7 +1166,7 @@ function shareWhatsApp(){
   lines.push('');
   lines.push(`*${waAR ? 'الإجمالي' : 'TOTAL / ' + (c.isCIF ? 'CFR' : 'FOB')}: ${fmtKRW(c.totalKRW)}  (${fmtFX(c.fob, currency)})*`);
   if(c.rate > 0) lines.push('');
-  if(c.rate > 0) lines.push(`(1 ${currency} = ${fmtKRW(c.rate)})`);
+  if(c.rate > 0) lines.push(`\u2066(1 ${currency} = ${fmtKRW(c.rate)})\u2069`);
 
   const text = lines.join('\n');
   const url = 'https://wa.me/?text=' + encodeURIComponent(text);
