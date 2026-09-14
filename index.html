@@ -266,8 +266,7 @@
 
   /* Arabic RTL buyer quote */
   .quote[dir="rtl"]{direction:rtl;}
-  .quote[dir="rtl"] .q-head{flex-direction:row-reverse;}
-  .quote[dir="rtl"] .q-head > div:first-child{flex-direction:row-reverse;}
+  .quote[dir="rtl"] .q-head{flex-direction:row;}
 
 
   /* New dual-currency comfortable table */
@@ -631,7 +630,40 @@
         </div>
       </div>
       <h2 id="h-shipping" style="margin-top:22px;">Shipping cost (optional)</h2>
+      <label id="l-shipping">Shipping amount (in your quote currency — set below)</label>
       <input id="shipping" class="num-input" type="number" placeholder="empty = FOB" oninput="render()">
+
+      <div style="margin-top:10px;">
+        <button onclick="toggleShipType()" id="shipTypeToggle" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;">
+          <span id="shipTypeArrow" style="display:inline-block;transition:transform .2s;font-size:10px;">▶</span>
+          RoRo / Container <span style="font-size:10px;color:var(--muted);margin-left:2px;">(optional)</span>
+        </button>
+        <div id="shipTypeSection" style="display:none;margin-top:8px;">
+          <div class="vat-options" style="margin-top:0;">
+            <label class="vat-opt" id="opt-roro">
+              <input type="radio" name="shipMethod" value="roro" checked onchange="render()">
+              RoRo
+            </label>
+            <label class="vat-opt" id="opt-container">
+              <input type="radio" name="shipMethod" value="container" onchange="render()">
+              Container
+            </label>
+          </div>
+          <div id="containerSizeWrap" style="display:none;margin-top:8px;">
+            <div class="vat-options">
+              <label class="vat-opt" id="opt-size20">
+                <input type="radio" name="containerSize" value="20" checked onchange="render()">
+                20ft
+              </label>
+              <label class="vat-opt" id="opt-size40">
+                <input type="radio" name="containerSize" value="40" onchange="render()">
+                40ft
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div style="margin-top:10px;">
         <button onclick="toggleShoring()" id="shoringToggle" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;">
           <span id="shoringArrow" style="display:inline-block;transition:transform .2s;font-size:10px;">▶</span>
@@ -730,6 +762,21 @@ function toggleShoring(){
   if(!open){ document.getElementById('shoring').value=''; render(); }
 }
 
+function toggleShipType(){
+  const sec = document.getElementById('shipTypeSection');
+  const arrow = document.getElementById('shipTypeArrow');
+  const open = sec.style.display === 'none';
+  sec.style.display = open ? '' : 'none';
+  arrow.style.transform = open ? 'rotate(90deg)' : '';
+  if(!open){
+    // Reset to defaults when collapsed, same pattern as the other optional toggles
+    document.querySelector('input[name="shipMethod"][value="roro"]').checked = true;
+    document.querySelector('input[name="containerSize"][value="20"]').checked = true;
+    document.getElementById('containerSizeWrap').style.display = 'none';
+    render();
+  }
+}
+
 function toggleVIN(){
   const sec = document.getElementById('vinSection');
   const arrow = document.getElementById('vinArrow');
@@ -781,6 +828,10 @@ function fmtFX(n, cur){
   return sym + Math.round(n||0).toLocaleString('en-US');
 }
 function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function shipLabelText(method, size, isAR){
+  if(method === 'container') return isAR ? ('حاوية ' + size + ' قدم') : (size + 'ft Container');
+  return isAR ? 'رورو' : 'RoRo';
+}
 
 function getVatType(){
   return document.querySelector('input[name="vatType"]:checked').value;
@@ -809,13 +860,23 @@ function compute(){
   const incentivesPct = incentivesRaw === '' ? null : (Number(incentivesRaw) || 0);
   const incentivesAmount = incentivesPct !== null ? vatAfterKarabaDC * (incentivesPct / 100) : null;
 
+  const rate = Number(document.getElementById('rate').value) || 0;
+
   const feeRaw = document.getElementById('fee').value;
   const fee = feeRaw === '' ? null : (Number(feeRaw) || 0);
   const carrierRaw = document.getElementById('carrier').value;
   const carrier = carrierRaw === '' ? null : (Number(carrierRaw) || 0);
+  // Shipping is entered directly in the buyer's currency (USD/EUR — whatever's
+  // set under Exchange Rate below), since that's what shipping companies quote
+  // in almost every time. Converted to KRW using that same rate — no separate
+  // shipping-specific exchange rate needed.
   const shippingRaw = document.getElementById('shipping').value;
-  const shipping = shippingRaw === '' ? null : (Number(shippingRaw) || 0);
-  const isCIF = shipping !== null;
+  const shippingInput = shippingRaw === '' ? null : (Number(shippingRaw) || 0);
+  const isCIF = shippingInput !== null;
+  const shipping = shippingInput === null ? null : shippingInput * rate;
+  const shipMethod = (document.querySelector('input[name="shipMethod"]:checked') || {}).value || 'roro';
+  const containerSize = (document.querySelector('input[name="containerSize"]:checked') || {}).value || '20';
+  const shippingLabel = shipMethod === 'container' ? (containerSize + 'ft Container') : 'RoRo';
   const shoringEl = document.getElementById('shoring');
   const shoring = shoringEl && shoringEl.value.trim() !== '' ? (Number(shoringEl.value) || 0) : null;
   const handlingRaw = document.getElementById('handling').value;
@@ -837,11 +898,10 @@ function compute(){
     + (parts !== null ? parts : 0)
     + (customFee !== null ? customFee : 0)
     + (shoring !== null ? shoring : 0);
-  const rate = Number(document.getElementById('rate').value) || 0;
   const fob = rate > 0 ? totalKRW / rate : 0;
 
   const vin = (document.getElementById('vinNumber') ? document.getElementById('vinNumber').value.trim() : '');
-  return {carPrice, auctionFees, totalCarPrice, vatBase, vatType, vatAmount, sharePct, half, vatAfterKarabaDC, incentivesPct, incentivesAmount, offerPrice, fee, carrier, shipping, isCIF, handling, handlingLabel, parts, customFee, customFeeLabel, shoring, totalKRW, rate, fob, vin};
+  return {carPrice, auctionFees, totalCarPrice, vatBase, vatType, vatAmount, sharePct, half, vatAfterKarabaDC, incentivesPct, incentivesAmount, offerPrice, fee, carrier, shipping, isCIF, shippingLabel, shipMethod, containerSize, handling, handlingLabel, parts, customFee, customFeeLabel, shoring, totalKRW, rate, fob, vin};
 }
 
 function render(){
@@ -849,6 +909,14 @@ function render(){
   document.getElementById('opt-invoice').classList.toggle('active', vt==='invoice');
   document.getElementById('opt-individual').classList.toggle('active', vt==='individual');
   document.getElementById('opt-notax').classList.toggle('active', vt==='notax');
+
+  const shipMethod = (document.querySelector('input[name="shipMethod"]:checked') || {}).value || 'roro';
+  document.getElementById('opt-roro').classList.toggle('active', shipMethod==='roro');
+  document.getElementById('opt-container').classList.toggle('active', shipMethod==='container');
+  document.getElementById('containerSizeWrap').style.display = shipMethod==='container' ? '' : 'none';
+  const containerSize = (document.querySelector('input[name="containerSize"]:checked') || {}).value || '20';
+  document.getElementById('opt-size20').classList.toggle('active', containerSize==='20');
+  document.getElementById('opt-size40').classList.toggle('active', containerSize==='40');
 
   const c = compute();
 
@@ -873,7 +941,7 @@ function render(){
 
   // ── Meta bar — same design for both views, including VIN.
   //    Exchange rate only shows once a rate has actually been entered. ──
-  const showVin = true;
+  const showVin = !!c.vin;
   const showRate = c.rate > 0;
   const lbl = {
     vin:   isAR ? 'رقم الهيكل' : 'VIN',
@@ -919,7 +987,7 @@ function render(){
     if(c.customFee !== null) irows += intRow(c.customFeeLabel, c.customFee, conv(c.customFee), currency);
     if(c.isCIF || c.shoring !== null){
       irows += intSec('Shipping');
-      if(c.isCIF) irows += intRow('Shipping cost', c.shipping, conv(c.shipping), currency);
+      if(c.isCIF) irows += intRow('Shipping cost ('+shipLabelText(c.shipMethod, c.containerSize, false)+')', c.shipping, conv(c.shipping), currency);
       if(c.shoring !== null) irows += intRow('Shoring', c.shoring, conv(c.shoring), currency);
     }
     irows += intTotal(c.isCIF ? 'TOTAL / CFR' : 'TOTAL / FOB', c.totalKRW, c.fob, currency);
@@ -927,7 +995,7 @@ function render(){
     irows += intRow(isAR ? 'سعر المركبة'      : 'Vehicle price', c.offerPrice, conv(c.offerPrice), currency);
     if(c.fee !== null) irows += intRow(isAR ? 'رسوم الوكيل' : 'Dealer Fee', c.fee, conv(c.fee), currency);
     if(c.carrier !== null) irows += intRow(isAR ? 'رسوم نقل السيارة' : 'Car carrier', c.carrier, conv(c.carrier), currency);
-    if(c.isCIF) irows += intRow(isAR ? 'رسوم الشحن' : 'Shipping cost', c.shipping, conv(c.shipping), currency);
+    if(c.isCIF) irows += intRow((isAR ? 'رسوم الشحن' : 'Shipping cost')+' ('+shipLabelText(c.shipMethod, c.containerSize, isAR)+')', c.shipping, conv(c.shipping), currency);
     if(c.shoring !== null) irows += intRow(isAR ? 'رسوم التثبيت' : 'Shoring', c.shoring, conv(c.shoring), currency);
     if(c.handling !== null) irows += intRow(c.handlingLabel, c.handling, conv(c.handling), currency);
     if(c.parts !== null) irows += intRow(isAR ? 'قطع الغيار' : 'Parts', c.parts, conv(c.parts), currency);
@@ -1060,7 +1128,7 @@ function shareWhatsApp(){
   lines.push(`${waAR?'سعر المركبة':'Vehicle price'}: ${fmtKRW(c.offerPrice)}  (${fmtFX(conv(c.offerPrice), currency)})`);
   if(c.fee !== null) lines.push(`${waAR?'رسوم الوكيل':'Dealer Fee'}: ${fmtKRW(c.fee)}  (${fmtFX(conv(c.fee), currency)})`);
   if(c.carrier !== null) lines.push(`${waAR?'رسوم نقل السيارة':'Car carrier'}: ${fmtKRW(c.carrier)}  (${fmtFX(conv(c.carrier), currency)})`);
-  if(c.isCIF) lines.push(`${waAR?'رسوم الشحن':'Shipping cost'}: ${fmtKRW(c.shipping)}  (${fmtFX(conv(c.shipping), currency)})`);
+  if(c.isCIF) lines.push(`${waAR?'رسوم الشحن':'Shipping cost'} (${shipLabelText(c.shipMethod, c.containerSize, waAR)}): ${fmtKRW(c.shipping)}  (${fmtFX(conv(c.shipping), currency)})`);
   if(c.handling !== null) lines.push(`${c.handlingLabel}: ${fmtKRW(c.handling)}  (${fmtFX(conv(c.handling), currency)})`);
   if(c.parts !== null) lines.push(`${waAR?'قطع الغيار':'Parts'}: ${fmtKRW(c.parts)}  (${fmtFX(conv(c.parts), currency)})`);
   if(c.customFee !== null) lines.push(`${c.customFeeLabel}: ${fmtKRW(c.customFee)}  (${fmtFX(conv(c.customFee), currency)})`);
@@ -1113,6 +1181,8 @@ async function saveDeal(){
     fee: document.getElementById('fee').value,
     carrier: document.getElementById('carrier').value,
     shipping: document.getElementById('shipping').value,
+    shipMethod: (document.querySelector('input[name="shipMethod"]:checked') || {}).value || 'roro',
+    containerSize: (document.querySelector('input[name="containerSize"]:checked') || {}).value || '20',
     handling: document.getElementById('handling').value,
     handlingLabel: document.getElementById('handlingLabel').value,
     parts: document.getElementById('parts').value,
@@ -1174,6 +1244,12 @@ async function loadDeal(key){
     document.getElementById('fee').value = deal.fee || '';
     document.getElementById('carrier').value = deal.carrier || '';
     document.getElementById('shipping').value = deal.shipping || '';
+    document.querySelector(`input[name="shipMethod"][value="${deal.shipMethod||'roro'}"]`).checked = true;
+    document.querySelector(`input[name="containerSize"][value="${deal.containerSize||'20'}"]`).checked = true;
+    if(deal.shipMethod === 'container'){
+      document.getElementById('shipTypeSection').style.display = '';
+      document.getElementById('shipTypeArrow').style.transform = 'rotate(90deg)';
+    }
     document.getElementById('handling').value = deal.handling || '';
     document.getElementById('handlingLabel').value = deal.handlingLabel || '';
     document.getElementById('parts').value = deal.parts || '';
